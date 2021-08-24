@@ -6,6 +6,7 @@ DOMAIN_NAME=bobo-little-star-cf.aws.$ROOT_DOMAIN_NAME.me
 BUCKET_NAME=bobos-bucket
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones --query "HostedZones[?contains(Name, '$ROOT_DOMAIN_NAME')].Id" --output text | cut -c 13-)
 ACL_DEFAULT_ACTION=BLOCK # DEV env BLOCK, PROD env ALLOW
+ALLOWED_ORIGINS=https://$DOMAIN_NAME,https://localhost:3000 # DEV env might allow some localhost origins
 
 aws cloudformation deploy \
   --stack-name $STACK_NAME \
@@ -14,7 +15,8 @@ aws cloudformation deploy \
   --parameter-overrides \
   "BucketName=$BUCKET_NAME" \
   "DomainName=$DOMAIN_NAME" \
-  "HostedZoneId=$HOSTED_ZONE_ID"
+  "ACLDefaultAction=$ACL_DEFAULT_ACTION" \
+  "AllowedOrigins=$ALLOWED_ORIGINS"
 
 docker compose run --rm install
 docker compose run --rm build

@@ -9,6 +9,8 @@ Parameters:
   ACLDefaultAction:
     Type: String
     Default: BLOCK
+  AllowedOrigins:
+    Type: CommaDelimitedList
 Resources:
   BoBoCert:
     Type: AWS::CertificateManager::Certificate
@@ -51,7 +53,7 @@ Resources:
           - AllowedMethods:
               - GET
             AllowedOrigins:
-              - !Ref DomainName
+              - !Ref AllowedOrigins
             MaxAge: 3600
   BoBoCFDistribution:
     Type: AWS::CloudFront::Distribution
