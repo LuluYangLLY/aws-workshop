@@ -1,0 +1,13 @@
+version: "3.9"
+x-node: &node
+  image: node:lts-alpine
+  volumes:
+    - .:/t
+  working_dir: /t
+services:
+  install:
+    <<: *node
+    command: npm install
+  build:
+    <<: *node
+    command: npm run build
