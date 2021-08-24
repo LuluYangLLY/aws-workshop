@@ -6,6 +6,8 @@ Parameters:
     Type: String
   HostedZoneId:
     Type: String
+  BffDomain:
+    Type: String
   ACLDefaultAction:
     Type: String
     Default: BLOCK
@@ -55,6 +57,52 @@ Resources:
             AllowedOrigins:
               - !Ref AllowedOrigins
             MaxAge: 3600
+  CFDDefaultCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        DefaultTTL: 86400
+        MaxTTL: 3153600
+        MinTTL: 0
+        Name: !!Join 
+          - ''
+          - !Ref BucketName
+          - '-'
+          - default-cache-policy
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: all
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: whitelist
+            Headers:
+              - Origin
+              - Access-Control-Request-Headers
+              - Access-Control-Request-Method
+          QueryStringsConfig:
+            QueryStringBehavior: all
+  CFDBffCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        DefaultTTL: 86400
+        MaxTTL: 3153600
+        MinTTL: 0
+        Name: !!Join 
+          - ''
+          - !Ref BucketName
+          - '-'
+          - bff-cache-policy
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: all
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: whitelist
+            Headers:
+              - Authorization
+          QueryStringsConfig:
+            QueryStringBehavior: all
   BoBoCFDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -62,17 +110,35 @@ Resources:
         Aliases:
           - !Ref DomainName
         DefaultCacheBehavior:
-          ForwardedValues:
-            QueryString: true
-            Cookies:
-              Forward: all
-            Headers:
-              - Origin
-              - Access-Control-Request-Headers
-              - Access-Control-Request-Method
           TargetOriginId: !Ref BoBoBucket
           ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: !Ref CFDDefaultCachePolicy
           Compress: true
+          AllowedMethods:
+            - HEAD
+            - GET
+            - OPTIONS
+          CachedMethods:
+            - HEAD
+            - GET
+            - OPTIONS
+        CacheBehaviors:
+          - PathPattern: api/*
+            TargetOriginId: !Ref BffDomain
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: !Ref CFDBffCachePolicy
+            AllowedMethods:
+              - HEAD
+              - GET
+              - OPTIONS
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - HEAD
+              - GET
+              - OPTIONS
         DefaultRootObject: index.html
         HttpVersion: http2
         Enabled: true
@@ -87,6 +153,10 @@ Resources:
                 - ''
                 - - origin-access-identity/cloudfront/
                   - !Ref BoBoCloudFrontOriginAccessIdentity
+          - CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+            DomainName: !Ref BffDomain
+            Id: !Ref BffDomain
         PriceClass: PriceClass_All
         WebACLId: !Ref WebACL
         ViewerCertificate:
@@ -97,6 +167,8 @@ Resources:
       - BoBoCert
       - BoBoBucket
       - BoBoCloudFrontOriginAccessIdentity
+      - CFDDefaultCachePolicy
+      - CFDBffCachePolicy
   BoBoRecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
