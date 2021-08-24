@@ -5,6 +5,7 @@ STACK_NAME=mkr-bobo
 DOMAIN_NAME=bobo-little-star-cf.aws.$ROOT_DOMAIN_NAME.me
 BUCKET_NAME=bobos-bucket
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones --query "HostedZones[?contains(Name, '$ROOT_DOMAIN_NAME')].Id" --output text | cut -c 13-)
+ACL_DEFAULT_ACTION=BLOCK # DEV env BLOCK, PROD env ALLOW
 
 aws cloudformation deploy \
   --stack-name $STACK_NAME \

@@ -1,3 +1,4 @@
+AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   BucketName:
     Type: String
@@ -5,6 +6,9 @@ Parameters:
     Type: String
   HostedZoneId:
     Type: String
+  ACLDefaultAction:
+    Type: String
+    Default: BLOCK
 Resources:
   BoBoCert:
     Type: AWS::CertificateManager::Certificate
@@ -66,7 +70,9 @@ Resources:
               - Access-Control-Request-Method
           TargetOriginId: !Ref BoBoBucket
           ViewerProtocolPolicy: redirect-to-https
+          Compress: true
         DefaultRootObject: index.html
+        HttpVersion: http2
         Enabled: true
         Origins:
           - DomainName: !Join
@@ -79,6 +85,8 @@ Resources:
                 - ''
                 - - origin-access-identity/cloudfront/
                   - !Ref BoBoCloudFrontOriginAccessIdentity
+        PriceClass: PriceClass_All
+        WebACLId: !Ref WebACL
         ViewerCertificate:
           SslSupportMethod: sni-only
           AcmCertificateArn: !Ref BoBoCert
@@ -96,3 +104,33 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt BoBoCFDistribution.DomainName
         HostedZoneId: Z2FDTNDATAQYW2
+  IPSetWhiteList:
+    Type: AWS::WAF::IPSet
+    Properties:
+      Name: "IPSet for whiteListed IP addresses"
+      IPSetDescriptors:
+        - Type: IPV4
+          Value: x.x.x.x/28
+        - Type: IPV4
+          Value: x.x.x.x/30
+  IPSetRule:
+    Type: AWS::WAF::Rule
+    Properties:
+      MetricName: XXCompanyIPSetRule
+      Name: XXCompanyIPSetRule
+      Predicates:
+        - DataId: !Ref IPSetWhiteList
+          Negated: false
+          Type: IPMatch
+  WebACL:
+    Type: AWS::WAF::WebACL
+    Properties:
+      Name: "Web ACL to allow the given IPSet"
+      MetricName: WebACL
+      DefaultAction:
+        Type: !Ref ACLDefaultAction
+      Rules:
+        - Priority: 1
+          RuleId: !Ref IPSetRule
+          Action: Type: ALLOW
+      
